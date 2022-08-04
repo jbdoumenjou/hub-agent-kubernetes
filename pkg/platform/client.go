@@ -457,7 +457,7 @@ func (c *Client) DeleteEdgeIngress(ctx context.Context, namespace, name, lastKno
 func (c *Client) CreateACP(ctx context.Context, policy *hubv1alpha1.AccessControlPolicy) (*acp.ACP, error) {
 	acpReq := acp.ACP{
 		Name:   policy.Name,
-		Config: *acp.ConfigFromPolicy(policy),
+		Config: *acp.ConfigFromPolicy(policy, nil),
 	}
 	body, err := json.Marshal(acpReq)
 	if err != nil {
@@ -508,7 +508,7 @@ func (c *Client) CreateACP(ctx context.Context, policy *hubv1alpha1.AccessContro
 func (c *Client) UpdateACP(ctx context.Context, oldVersion string, policy *hubv1alpha1.AccessControlPolicy) (*acp.ACP, error) {
 	acpReq := acp.ACP{
 		Name:   policy.Name,
-		Config: *acp.ConfigFromPolicy(policy),
+		Config: *acp.ConfigFromPolicy(policy, nil),
 	}
 	body, err := json.Marshal(acpReq)
 	if err != nil {

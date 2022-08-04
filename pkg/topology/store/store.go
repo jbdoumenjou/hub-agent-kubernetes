@@ -68,9 +68,9 @@ func New(ctx context.Context, cfg Config) (*Store, error) {
 		},
 	}
 
-	if err := s.cloneRepository(ctx); err != nil {
-		return nil, err
-	}
+	// if err := s.cloneRepository(ctx); err != nil {
+	//	return nil, err
+	//}
 
 	return s, nil
 }
