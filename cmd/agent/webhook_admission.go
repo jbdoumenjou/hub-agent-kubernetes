@@ -244,7 +244,7 @@ func setupAdmissionHandlers(ctx context.Context, platformClient *platform.Client
 		edgeIngressWatcher.Run(ctx)
 	}()
 
-	polGetter := reviewer.NewPolGetter(hubInformer, clientSet)
+	polGetter := reviewer.NewPolGetter(hubInformer)
 
 	fwdAuthMdlwrs := reviewer.NewFwdAuthMiddlewares(authServerAddr, polGetter, traefikClientSet.TraefikV1alpha1())
 

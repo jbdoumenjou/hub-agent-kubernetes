@@ -30,6 +30,7 @@ import (
 	"github.com/traefik/hub-agent-kubernetes/pkg/acp/jwt"
 	"github.com/traefik/hub-agent-kubernetes/pkg/acp/oidc"
 	hubv1alpha1 "github.com/traefik/hub-agent-kubernetes/pkg/crd/api/hub/v1alpha1"
+	v1 "k8s.io/api/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
 )
 
@@ -44,6 +45,9 @@ type Watcher struct {
 	configsMu sync.RWMutex
 	configs   map[string]*acp.Config
 	previous  map[string]*acp.Config
+
+	secretsMu       sync.RWMutex
+	acpBySecretName map[string]*hubv1alpha1.AccessControlPolicy
 
 	refresh chan struct{}
 
@@ -102,8 +106,33 @@ func (w *Watcher) Run(ctx context.Context) {
 
 // OnAdd implements Kubernetes cache.ResourceEventHandler so it can be used as an informer event handler.
 func (w *Watcher) OnAdd(obj interface{}) {
-	v, ok := obj.(*hubv1alpha1.AccessControlPolicy)
-	if !ok {
+	var policy *hubv1alpha1.AccessControlPolicy
+
+	switch t := obj.(type) {
+	case *v1.Secret:
+		log.Debug().Interface("secret", t).Str("method", "OnAdd").Msg("TO DELETE")
+		w.secretsMu.RLock()
+		policy = w.acpBySecretName[secretKey(policy.Name, policy.Namespace)]
+		w.secretsMu.Unlock()
+
+		if policy == nil {
+			log.Debug().
+				Str("component", "acp_watcher").
+				Str("secret", fmt.Sprintf("%s@%s", t.Name, t.Namespace)).
+				Msg("not referenced by any ACP")
+			return
+		}
+
+	case *hubv1alpha1.AccessControlPolicy:
+		log.Debug().Interface("acp", t).Str("method", "OnAdd").Msg("TO DELETE")
+		policy = t
+		if policy.Spec.OIDC != nil && policy.Spec.OIDC.Secret != nil && policy.Spec.OIDC.Secret.Name != "" {
+			w.secretsMu.Lock()
+			w.acpBySecretName[secretKey(policy.Spec.OIDC.Secret.Name, policy.Spec.OIDC.Secret.Namespace)] = policy
+			w.secretsMu.Unlock()
+		}
+
+	default:
 		log.Error().
 			Str("component", "acp_watcher").
 			Str("type", fmt.Sprintf("%T", obj)).
@@ -111,8 +140,18 @@ func (w *Watcher) OnAdd(obj interface{}) {
 		return
 	}
 
+	cfg, err := acp.ConfigFromPolicy(policy, w.kubeClientSet)
+	if err != nil {
+		log.Error().
+			Str("component", "acp_watcher").
+			Str("event", "OnAdd").
+			Err(err).
+			Msg("Cannot build configuration from policy")
+		return
+	}
+
 	w.configsMu.Lock()
-	w.configs[v.ObjectMeta.Name] = acp.ConfigFromPolicy(v, w.kubeClientSet)
+	w.configs[policy.ObjectMeta.Name] = cfg
 	w.configsMu.Unlock()
 
 	select {
@@ -123,8 +162,33 @@ func (w *Watcher) OnAdd(obj interface{}) {
 
 // OnUpdate implements Kubernetes cache.ResourceEventHandler so it can be used as an informer event handler.
 func (w *Watcher) OnUpdate(_, newObj interface{}) {
-	v, ok := newObj.(*hubv1alpha1.AccessControlPolicy)
-	if !ok {
+	var policy *hubv1alpha1.AccessControlPolicy
+
+	switch t := newObj.(type) {
+	case *v1.Secret:
+		log.Debug().Interface("secret", t).Str("method", "OnUpdate").Msg("TO DELETE")
+		w.secretsMu.RLock()
+		policy = w.acpBySecretName[secretKey(policy.Name, policy.Namespace)]
+		w.secretsMu.Unlock()
+
+		if policy == nil {
+			log.Debug().
+				Str("component", "acp_watcher").
+				Str("secret", fmt.Sprintf("%s@%s", t.Name, t.Namespace)).
+				Msg("not referenced by any ACP")
+			return
+		}
+
+	case *hubv1alpha1.AccessControlPolicy:
+		log.Debug().Interface("acp", t).Str("method", "OnUpdate").Msg("TO DELETE")
+		policy = t
+		if policy.Spec.OIDC != nil && policy.Spec.OIDC.Secret != nil && policy.Spec.OIDC.Secret.Name != "" {
+			w.secretsMu.Lock()
+			w.acpBySecretName[secretKey(policy.Spec.OIDC.Secret.Name, policy.Spec.OIDC.Secret.Namespace)] = policy
+			w.secretsMu.Unlock()
+		}
+
+	default:
 		log.Error().
 			Str("component", "acp_watcher").
 			Str("type", fmt.Sprintf("%T", newObj)).
@@ -132,10 +196,18 @@ func (w *Watcher) OnUpdate(_, newObj interface{}) {
 		return
 	}
 
-	cfg := acp.ConfigFromPolicy(v, w.kubeClientSet)
+	cfg, err := acp.ConfigFromPolicy(policy, w.kubeClientSet)
+	if err != nil {
+		log.Error().
+			Str("component", "acp_watcher").
+			Str("event", "OnUpdate").
+			Err(err).
+			Msg("Cannot build configuration from policy")
+		return
+	}
 
 	w.configsMu.Lock()
-	w.configs[v.ObjectMeta.Name] = cfg
+	w.configs[policy.ObjectMeta.Name] = cfg
 	w.configsMu.Unlock()
 
 	select {
@@ -201,9 +273,18 @@ func buildRoutes(ctx context.Context, cfgs map[string]*acp.Config) (http.Handler
 			mux.Handle(path, h)
 
 		default:
-			return nil, fmt.Errorf("unknown handler type for ACP %s", name)
+			return nil, fmt.Errorf("unknown handler type for ACP %q", name)
 		}
 	}
 
 	return mux, nil
+}
+
+func secretKey(name, namespace string) string {
+	ns := namespace
+	if ns == "" {
+		ns = "default"
+	}
+
+	return name + "@" + ns
 }

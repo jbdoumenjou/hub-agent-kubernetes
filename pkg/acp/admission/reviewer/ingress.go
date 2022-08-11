@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/rs/zerolog/log"
 	"github.com/traefik/hub-agent-kubernetes/pkg/acp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -109,6 +110,7 @@ func headerToForward(cfg *acp.Config) ([]string, error) {
 		headerToFwd = append(headerToFwd, "Set-Cookie")
 
 	default:
+		log.Debug().Interface("cfg", cfg).Msg("TO DELETE")
 		return nil, errors.New("unsupported ACP type")
 	}
 	return headerToFwd, nil

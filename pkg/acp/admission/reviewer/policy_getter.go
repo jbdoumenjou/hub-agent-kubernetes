@@ -37,16 +37,16 @@ type PolGetter struct {
 }
 
 // NewPolGetter creates new PolGetter.
-func NewPolGetter(informer hubinformer.SharedInformerFactory, kubeClientset *clientset.Clientset) *PolGetter {
-	return &PolGetter{informer: informer, kubeClientset: kubeClientset}
+func NewPolGetter(informer hubinformer.SharedInformerFactory) *PolGetter {
+	return &PolGetter{informer: informer}
 }
 
 // GetConfig gets ACP configuration.
 func (p PolGetter) GetConfig(canonicalName string) (*acp.Config, error) {
 	policy, err := p.informer.Hub().V1alpha1().AccessControlPolicies().Lister().Get(canonicalName)
 	if err != nil {
-		return nil, fmt.Errorf("get ACP: %w", err)
+		return nil, fmt.Errorf("get ACP %s: %w", canonicalName, err)
 	}
 
-	return acp.ConfigFromPolicy(policy, p.kubeClientset), nil
+	return acp.ConfigFromPolicy(policy, nil)
 }

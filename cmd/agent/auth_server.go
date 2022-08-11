@@ -100,6 +100,16 @@ func (c authServerCmd) run(cliCtx *cli.Context) error {
 		}
 	}
 
+	//kubeInformer := informers.NewSharedInformerFactory(kubeClientSet, 5*time.Minute)
+	//kubeInformer.Core().V1().Secrets().Informer().AddEventHandler(acpWatcher)
+	//kubeInformer.Start(cliCtx.Context.Done())
+	//
+	//for t, ok := range kubeInformer.WaitForCacheSync(cliCtx.Context.Done()) {
+	//	if !ok {
+	//		return fmt.Errorf("wait for cache sync: %s: %w", t, cliCtx.Context.Err())
+	//	}
+	//}
+
 	go acpWatcher.Run(cliCtx.Context)
 
 	listenAddr := cliCtx.String("listen-addr")

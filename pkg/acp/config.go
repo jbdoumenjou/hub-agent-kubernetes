@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/rs/zerolog/log"
 	"github.com/traefik/hub-agent-kubernetes/pkg/acp/basicauth"
 	"github.com/traefik/hub-agent-kubernetes/pkg/acp/jwt"
 	"github.com/traefik/hub-agent-kubernetes/pkg/acp/oidc"
@@ -40,7 +39,7 @@ type Config struct {
 }
 
 // ConfigFromPolicy returns an ACP configuration for the given policy.
-func ConfigFromPolicy(policy *hubv1alpha1.AccessControlPolicy, kubeClientset *clientset.Clientset) *Config {
+func ConfigFromPolicy(policy *hubv1alpha1.AccessControlPolicy, kubeClientset *clientset.Clientset) (*Config, error) {
 	switch {
 	case policy.Spec.JWT != nil:
 		jwtCfg := policy.Spec.JWT
@@ -57,7 +56,7 @@ func ConfigFromPolicy(policy *hubv1alpha1.AccessControlPolicy, kubeClientset *cl
 				TokenQueryKey:              jwtCfg.TokenQueryKey,
 				Claims:                     jwtCfg.Claims,
 			},
-		}
+		}, nil
 
 	case policy.Spec.BasicAuth != nil:
 		basicCfg := policy.Spec.BasicAuth
@@ -69,7 +68,7 @@ func ConfigFromPolicy(policy *hubv1alpha1.AccessControlPolicy, kubeClientset *cl
 				StripAuthorizationHeader: basicCfg.StripAuthorizationHeader,
 				ForwardUsernameHeader:    basicCfg.ForwardUsernameHeader,
 			},
-		}
+		}, nil
 
 	case policy.Spec.OIDC != nil:
 
@@ -128,8 +127,7 @@ func ConfigFromPolicy(policy *hubv1alpha1.AccessControlPolicy, kubeClientset *cl
 			var err error
 			oidcSecret, err = getOIDCSecret(oidcCfg.Secret.Name, oidcCfg.Secret.Namespace, kubeClientset)
 			if err != nil {
-				log.Error().Err(err).Msg("getOIDCSecret")
-				return &Config{}
+				return &Config{}, fmt.Errorf("getOIDCSecret: %w", err)
 			}
 			conf.OIDC.ClientSecret = oidcSecret.ClientSecret
 
@@ -144,9 +142,9 @@ func ConfigFromPolicy(policy *hubv1alpha1.AccessControlPolicy, kubeClientset *cl
 			conf.OIDC.Session.Secret = oidcSecret.StateCookieKey
 		}
 
-		return conf
+		return conf, nil
 	default:
-		return &Config{}
+		return &Config{}, errors.New("invalid accessControllerPolicy")
 	}
 }
 
@@ -166,17 +164,17 @@ func getOIDCSecret(secretName, namespace string, kubeClientset *clientset.Client
 
 	clientSecret, ok := secret.Data["clientSecret"]
 	if !ok {
-		return oidcSecret{}, errors.New("missing client secret")
+		return oidcSecret{}, errors.New("missing clientSecret")
 	}
 
 	sessionKey, ok := secret.Data["sessionKey"]
 	if !ok {
-		return oidcSecret{}, errors.New("missing session key")
+		return oidcSecret{}, errors.New("missing sessionKey")
 	}
 
 	stateCookieKey, ok := secret.Data["stateCookieKey"]
 	if !ok {
-		return oidcSecret{}, errors.New("missing state cookie key")
+		return oidcSecret{}, errors.New("missing stateCookieKey")
 	}
 
 	return oidcSecret{
