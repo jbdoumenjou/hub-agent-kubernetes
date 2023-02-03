@@ -155,6 +155,7 @@ func (h *Handler) reviewCreateOperation(ctx context.Context, c *hubv1alpha1.Cata
 
 	createReq := &platform.CreateCatalogReq{
 		Name:          c.Name,
+		Description:   c.Spec.Description,
 		CustomDomains: c.Spec.CustomDomains,
 		Services:      c.Spec.Services,
 	}

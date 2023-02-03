@@ -39,6 +39,7 @@ import (
 
 var testCatalogSpec = hubv1alpha1.CatalogSpec{
 	CustomDomains: []string{"foo.example.com", "bar.example.com"},
+	Description:   "My awesome catalog",
 	Services: []hubv1alpha1.CatalogService{
 		{
 			Name:       "whoami",
@@ -79,6 +80,7 @@ func TestHandler_ServeHTTP_createOperation(t *testing.T) {
 	}
 	wantCreateReq := &platform.CreateCatalogReq{
 		Name:          catalogName,
+		Description:   testCatalogSpec.Description,
 		Services:      testCatalogSpec.Services,
 		CustomDomains: testCatalogSpec.CustomDomains,
 	}

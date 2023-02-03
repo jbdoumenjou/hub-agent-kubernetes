@@ -96,6 +96,7 @@ type UpdateEdgeIngressReq struct {
 // CreateCatalogReq is the request for creating a catalog.
 type CreateCatalogReq struct {
 	Name          string            `json:"name"`
+	Description   string            `json:"description"`
 	CustomDomains []string          `json:"customDomains"`
 	Services      []catalog.Service `json:"services"`
 }
