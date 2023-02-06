@@ -173,6 +173,7 @@ func (h *Handler) reviewUpdateOperation(ctx context.Context, oldCatalog, newCata
 
 	updateReq := &platform.UpdateCatalogReq{
 		CustomDomains:   newCatalog.Spec.CustomDomains,
+		Description:     newCatalog.Spec.Description,
 		DevPortalDomain: newCatalog.Status.DevPortalDomain,
 		Services:        newCatalog.Spec.Services,
 	}

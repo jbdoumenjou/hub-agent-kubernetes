@@ -103,6 +103,7 @@ type CreateCatalogReq struct {
 
 // UpdateCatalogReq is a request for updating a catalog.
 type UpdateCatalogReq struct {
+	Description     string            `json:"description"`
 	DevPortalDomain string            `json:"devPortalDomain"`
 	CustomDomains   []string          `json:"customDomains"`
 	Services        []catalog.Service `json:"services"`
