@@ -181,7 +181,7 @@ func (w *Watcher) updateCatalogsFromCRD(c *hubv1alpha1.Catalog) {
 		svc.OpenAPISpecURL = statusSpecURLByName[svc.Name+"@"+svc.Namespace]
 
 		services = append(services, svc)
-	}	
+	}
 	w.catalogs[c.Name] = catalog.Catalog{
 		Name:          c.Name,
 		Services:      services,
