@@ -171,19 +171,17 @@ func (w *Watcher) updateCatalogsFromCRD(c *hubv1alpha1.Catalog) {
 		})
 	}
 
-	statusServicesByName := make(map[string]hubv1alpha1.CatalogServiceStatus)
+	statusSpecURLByName := make(map[string]string)
 	for _, svc := range c.Status.Services {
-		statusServicesByName[svc.Name+"@"+svc.Namespace] = svc
+		statusSpecURLByName[svc.Name+"@"+svc.Namespace] = svc.OpenAPISpecURL
 	}
 
 	var services []catalog.Service
 	for _, svc := range c.Spec.Services {
-		status := statusServicesByName[svc.Name+"@"+svc.Namespace]
-		svc.OpenAPISpecURL = status.OpenAPISpecURL
+		svc.OpenAPISpecURL = statusSpecURLByName[svc.Name+"@"+svc.Namespace]
 
 		services = append(services, svc)
-	}
-
+	}	
 	w.catalogs[c.Name] = catalog.Catalog{
 		Name:          c.Name,
 		Services:      services,
